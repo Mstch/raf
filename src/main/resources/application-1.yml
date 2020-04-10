@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url:  jdbc:h2:file:~/data/raflog1;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    platform: h2
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create
+server:
+  port: 8080
+node:
+  id: 1
+  peers:
+    2:
+      id: 2
+      host: "localhost"
+      port: 8081
+    3:
+      id: 3
+      host: "localhost"
+      port: 8082
