@@ -43,6 +43,7 @@ public class Client {
         int votes = 1;
         for (Map.Entry<Integer, Peer> peerEntry : node.peers.entrySet()) {
             Peer peer = peerEntry.getValue();
+            long start = System.currentTimeMillis();
             try {
                 VoteResp voteResp = template.postForObject(peer.toUri() + "/vote", req, VoteResp.class);
                 if (voteResp != null && voteResp.granted) {
@@ -52,7 +53,7 @@ public class Client {
                     }
                 }
             } catch (RestClientException e) {
-                log.error("node " + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
+                log.error("spend" + (System.currentTimeMillis() - start) + "ms"  + peer.toUri() + "connection / read error: " + e.getLocalizedMessage());
             }
         }
     }
@@ -63,14 +64,20 @@ public class Client {
         heartBeatReq.index = node.lastCommitLogIndex.get();
         for (Map.Entry<Integer, Peer> peerEntry : node.peers.entrySet()) {
             Peer peer = peerEntry.getValue();
+            long start = System.currentTimeMillis();
             try {
                 HeartbeatResp heartBeatResp = template.postForObject(peer.toUri() + "/heartbeat", heartBeatReq, HeartbeatResp.class);
-                if (heartBeatResp != null && heartBeatResp.index > node.lastCommitLogIndex.get()) {
-                    node.becomeFollower(-1);
-                    return;
+                if (heartBeatResp != null) {
+                    if (heartBeatResp.index > node.lastCommitLogIndex.get()) {
+                        node.becomeFollower(-1);
+                        return;
+                    } else if (heartBeatResp.index < node.lastCommitLogIndex.get()) {
+                        List<Log> logs = repo.findByIndexGreaterThan(heartBeatResp.index);
+                        appendLogsRequestOnSingleNode(peer, logs.toArray(new Log[0]));
+                    }
                 }
             } catch (RestClientException e) {
-                log.error("node " + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
+                log.error("spend" + (System.currentTimeMillis() - start) + "ms"  + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
             }
         }
     }
@@ -119,7 +126,7 @@ public class Client {
         ApplyNotifyReq req = new ApplyNotifyReq();
         req.index = index;
         try {
-           template.postForObject(peer.toUri() + "/apply", req, ApplyNotifyResp.class);
+            template.postForObject(peer.toUri() + "/apply", req, ApplyNotifyResp.class);
         } catch (RestClientException e) {
             log.error("node " + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
         }

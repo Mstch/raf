@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        div {
+            height: 500px;
+        }
+        .stat{
+            flex: 1;
+        }
+    </style>
+    <script src="jquery-1.10.2.min.js"></script>
+</head>
+<body>
+<div style="display: flex">
+    <div class="stat" id="0">0</div>
+    <div class="stat" id="1">1</div>
+    <div class="stat" id="2">2</div>
+    <script>
+        setInterval(() => {
+            $('.stat').each((index,item) => {
+                $.ajax('http://localhost:808' + item.id + '/fsm').success(res => {
+                    $(item) .text(JSON.stringify(res))
+                })
+            })
+        }, 1000)
+    </script>
+</div>
+</body>
+</html>

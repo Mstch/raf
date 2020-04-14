@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -52,9 +53,9 @@ public class Handler {
         return resp;
     }
 
-    @GetMapping("/status")
-    public Node handleStatus() {
-        return node;
+    @GetMapping("/fsm")
+    public Map<String, String> handleStatus() {
+        return FSM.state;
     }
 
     @GetMapping("/ping")
@@ -64,11 +65,11 @@ public class Handler {
 
     @PostMapping("/command")
     public CommandResp handleCommand(@RequestBody Command cmd) {
-        if (cmd.opt.equals("get")) {
-            return new CommandResp(null, cmd.apply(), true);
-        }
         if (node.rule != Rule.LEADER) {
             return new CommandResp(node.peers.get(node.leader.get()).toUri(), null, false);
+        }
+        if (cmd.opt.equals("get")) {
+            return new CommandResp(null, cmd.apply(), true);
         }
         Log log = repo.saveAndFlush(cmd.toLog());
         int index = node.lastCommitLogIndex.incrementAndGet();
