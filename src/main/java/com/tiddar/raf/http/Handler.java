@@ -69,7 +69,18 @@ public class Handler {
             return new CommandResp(node.peers.get(node.leader.get()).toUri(), null, false);
         }
         if (cmd.opt.equals("get")) {
-            return new CommandResp(null, cmd.apply(), true);
+            if (node.readType == ReadType.READ_INDEX) {
+                if (client.heartbeatRequest()) {
+                    return new CommandResp(null, cmd.apply(), true);
+                }
+            } else if (node.readType == ReadType.LEASE) {
+                if (System.currentTimeMillis() - node.lastHeartbeat < 4000) {
+                    return new CommandResp(null, cmd.apply(), true);
+                } else if (client.heartbeatRequest()) {
+                    return new CommandResp(null, cmd.apply(), true);
+                }
+            }
+            return new CommandResp(null, null, true);
         }
         Log log = repo.saveAndFlush(cmd.toLog());
         int index = node.lastCommitLogIndex.incrementAndGet();
@@ -81,6 +92,7 @@ public class Handler {
         } else {
             return new CommandResp(null, null, false);
         }
+
     }
 
 

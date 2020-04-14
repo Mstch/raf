@@ -58,7 +58,7 @@ public class Client {
         }
     }
 
-    public void heartbeatRequest() {
+    public boolean heartbeatRequest() {
         HeartbeatReq heartBeatReq = new HeartbeatReq();
         heartBeatReq.id = node.id;
         heartBeatReq.index = node.lastCommitLogIndex.get();
@@ -70,7 +70,7 @@ public class Client {
                 if (heartBeatResp != null) {
                     if (heartBeatResp.index > node.lastCommitLogIndex.get()) {
                         node.becomeFollower(-1);
-                        return;
+                        return false;
                     } else if (heartBeatResp.index < node.lastCommitLogIndex.get()) {
                         List<Log> logs = repo.findByIndexGreaterThan(heartBeatResp.index);
                         appendLogsRequestOnSingleNode(peer, logs.toArray(new Log[0]));
@@ -80,6 +80,8 @@ public class Client {
                 log.error("spend" + (System.currentTimeMillis() - start) + "ms"  + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
             }
         }
+        node.lastHeartbeat = System.currentTimeMillis();
+        return true;
     }
 
 

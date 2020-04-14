@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -23,12 +22,14 @@ public class Node {
     public Integer id;
     public Map<Integer, Peer> peers;
     public Rule rule = Rule.FOLLOWER;
+    public ReadType readType = ReadType.READ_INDEX;
     public AtomicInteger leader = new AtomicInteger(-1);
     public AtomicInteger voteFor = new AtomicInteger(-1);
     public AtomicInteger lastCommitLogIndex = new AtomicInteger(0);
     public AtomicInteger lastAppliedLogIndex = new AtomicInteger(0);
+    public Map<String, String> stateView = FSM.state;
 
-    public Map<String,String>  stateView = FSM.state;
+    public Long lastHeartbeat = 0L;
 
     @JsonIgnore
     private RandomTimer timer = new RandomTimer();
