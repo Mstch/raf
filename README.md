@@ -10,3 +10,5 @@ raft implementation without term => raf
 
 长期计划
 - [ ] 看看有多少bug
+- [ ] 异步http
+- [ ] 弃用http,换个牛逼点的
