@@ -12,3 +12,4 @@ raft implementation without term => raf
 - [ ] 看看有多少bug
 - [ ] 异步http
 - [ ] 弃用http,换个牛逼点的
+- [ ] 把term加进去
