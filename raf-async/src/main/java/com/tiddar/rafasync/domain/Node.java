@@ -1,7 +1,7 @@
-package com.tiddar.raf.domain;
+package com.tiddar.rafasync.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.tiddar.raf.http.Client;
+import com.tiddar.rafasync.http.Client;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -44,15 +44,17 @@ public class Node {
     public void becomeFollower(int leaderId) {
         if (this.rule != Rule.FOLLOWER) {
             log.info("node:" + id + "become follower");
-            this.timer.changeTo("election timeout", this::becomeCandidate, 5500, 4000);
-        } else {
-            this.timer.reLoop();
         }
         this.rule = Rule.FOLLOWER;
         if (leaderId != -1) {
             this.leader.set(leaderId);
         }
         this.voteFor.set(-1);
+        if (this.rule != Rule.FOLLOWER) {
+            this.timer.changeTo("election timeout", this::becomeCandidate, 5500, 4000);
+        } else {
+            this.timer.reLoop();
+        }
     }
 
     public void becomeCandidate() {

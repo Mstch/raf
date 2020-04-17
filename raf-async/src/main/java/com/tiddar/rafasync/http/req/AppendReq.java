@@ -1,10 +1,7 @@
-package com.tiddar.raf.http.req;
+package com.tiddar.rafasync.http.req;
 
-import com.tiddar.raf.domain.Log;
-import lombok.Data;
+import com.tiddar.rafasync.domain.Log;
 
-
-@Data
 public class AppendReq {
     public Integer leaderId;
     public Log[] logs;

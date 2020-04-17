@@ -34,14 +34,16 @@ public class Handler {
     @PostMapping("/vote")
     public VoteResp handleVote(@RequestBody VoteReq voteReq) {
         VoteResp resp = new VoteResp();
-        if (voteReq.lastLogIndex >= node.lastCommitLogIndex.get()) {
+        if (voteReq.lastLogIndex >= node.lastCommitLogIndex.get() && (node.voteFor.get() == -1) || node.voteFor.get() == voteReq.getId()) {
             resp.granted = true;
+            node.getVoteFor().set(voteReq.getId());
             node.becomeFollower(-1);
         } else {
             resp.granted = false;
         }
         return resp;
     }
+
 
     @PostMapping("/heartbeat")
     public HeartbeatResp handleHeartbeat(@RequestBody HeartbeatReq heartbeatReq) {
@@ -128,5 +130,10 @@ public class Handler {
         return new ApplyNotifyResp();
     }
 
+
+    @GetMapping("/kill")
+    public void handleKill() {
+        System.exit(0);
+    }
 
 }

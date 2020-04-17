@@ -1,11 +1,10 @@
-package com.tiddar.raf.domain;
+package com.tiddar.rafasync.domain;
 
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Random;
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -13,28 +12,23 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
 public class RandomTimer {
-    Thread supervisor;
+    Thread worker;
     Random random = new Random();
     Condition wait;
     Lock lock;
     int max;
     int min;
-    Runnable task;
-    ExecutorService worker;
-    String name;
+    Task task;
 
 
     public RandomTimer() {
         this.lock = new ReentrantLock();
         this.wait = lock.newCondition();
-        this.name = "init";
-        worker = Executors.newFixedThreadPool(16,
-                new ThreadFactoryBuilder().setNameFormat("random timer  -%d").build());
-        this.supervisor = new Thread(() -> System.out.println("初始化random timer成功"));
+        this.worker = new Thread(() -> System.out.println("初始化random timer成功"));
     }
 
     public void start() {
-        this.supervisor.start();
+        this.worker.start();
     }
 
     public void reLoop() {
@@ -42,26 +36,25 @@ public class RandomTimer {
         lock.lock();
         try {
             wait.signalAll();
-        } finally {
+        }finally {
             lock.unlock();
         }
     }
 
-    public void changeTo(String name, Runnable task, int max, int min) {
-        this.name = name;
-        log.info("定时器切换为:" + name);
-        if (this.supervisor.isAlive() && !this.supervisor.isInterrupted()) {
-            this.supervisor.interrupt();
+    public void changeTo(String name,Task task, int max, int min) {
+        log.info("定时器切换为:"+name);
+        if (this.worker.isAlive() && !this.worker.isInterrupted()) {
+            this.worker.interrupt();
         }
         this.task = task;
         this.max = max;
         this.min = min;
-        this.supervisor = new Thread(() -> {
+        this.worker = new Thread(() -> {
             lock.lock();
-            while (!supervisor.isInterrupted()) {
+            while (!worker.isInterrupted()) {
                 try {
                     if (!wait.await(random.nextInt(max - min) + min, TimeUnit.MILLISECONDS)) {
-                        worker.execute(task);
+                        task.run();
                     }
                 } catch (InterruptedException e) {
                     //todo
@@ -70,8 +63,11 @@ public class RandomTimer {
             }
             lock.unlock();
         });
-        this.supervisor.start();
+        this.worker.start();
     }
 
 }
 
+interface Task {
+    void run();
+}

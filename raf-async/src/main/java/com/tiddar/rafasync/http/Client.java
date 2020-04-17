@@ -1,26 +1,32 @@
-package com.tiddar.raf.http;
+package com.tiddar.rafasync.http;
 
-import com.tiddar.raf.domain.Log;
-import com.tiddar.raf.domain.Node;
-import com.tiddar.raf.domain.Peer;
-import com.tiddar.raf.http.req.AppendReq;
-import com.tiddar.raf.http.req.ApplyNotifyReq;
-import com.tiddar.raf.http.req.HeartbeatReq;
-import com.tiddar.raf.http.req.VoteReq;
-import com.tiddar.raf.http.resp.AppendResp;
-import com.tiddar.raf.http.resp.ApplyNotifyResp;
-import com.tiddar.raf.http.resp.HeartbeatResp;
-import com.tiddar.raf.http.resp.VoteResp;
-import com.tiddar.raf.manager.LogRepo;
+import com.tiddar.rafasync.domain.Log;
+import com.tiddar.rafasync.domain.Node;
+import com.tiddar.rafasync.domain.Peer;
+import com.tiddar.rafasync.http.req.AppendReq;
+import com.tiddar.rafasync.http.req.ApplyNotifyReq;
+import com.tiddar.rafasync.http.req.HeartbeatReq;
+import com.tiddar.rafasync.http.req.VoteReq;
+import com.tiddar.rafasync.http.resp.AppendResp;
+import com.tiddar.rafasync.http.resp.ApplyNotifyResp;
+import com.tiddar.rafasync.http.resp.HeartbeatResp;
+import com.tiddar.rafasync.http.resp.VoteResp;
+import com.tiddar.rafasync.manager.LogRepo;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Resource;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 @Log4j2
 @Component
@@ -33,21 +39,18 @@ public class Client {
     @Resource
     LogRepo repo;
 
-     RestTemplate  template;
+    RestTemplate template = new RestTemplateBuilder().setReadTimeout(Duration.ofSeconds(2)).setConnectTimeout(Duration.ofSeconds(2)).build();
 
     public void voteRequest() {
         VoteReq req = new VoteReq();
         req.lastLogIndex = node.lastCommitLogIndex.get();
         req.id = node.id;
         int votes = 1;
-        VoteResp voteResp = null;
         for (Map.Entry<Integer, Peer> peerEntry : node.peers.entrySet()) {
             Peer peer = peerEntry.getValue();
             long start = System.currentTimeMillis();
             try {
-                log.debug("send vote to" + peer.toUri());
-                log.debug(Thread.currentThread().getId());
-                voteResp = template.postForObject(peer.toUri() + "/vote", req, VoteResp.class);
+                VoteResp voteResp = template.postForObject(peer.toUri() + "/vote", req, VoteResp.class);
                 if (voteResp != null && voteResp.granted) {
                     votes++;
                     if (votes > node.peers.size() / 2) {
@@ -55,7 +58,7 @@ public class Client {
                     }
                 }
             } catch (RestClientException e) {
-                log.error("spend" + (System.currentTimeMillis() - start) + " ms " + peer.toUri() + " connection / read error: " + e.getLocalizedMessage() + "\n" + voteResp);
+                log.error("spend" + (System.currentTimeMillis() - start) + "ms" + peer.toUri() + "connection / read error: " + e.getLocalizedMessage());
             }
         }
     }
@@ -80,7 +83,6 @@ public class Client {
                 }
             } catch (RestClientException e) {
                 log.error("spend" + (System.currentTimeMillis() - start) + "ms" + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
-                log.error(node);
             }
         }
         node.lastHeartbeat = System.currentTimeMillis();
@@ -88,14 +90,11 @@ public class Client {
     }
 
 
-    public boolean appendLogsRequest(Log[] logs) {
-        int success = 1;
-        for (Map.Entry<Integer, Peer> peerEntry : node.peers.entrySet()) {
-            if (appendLogsRequestOnSingleNode(peerEntry.getValue(), logs)) {
-                success++;
-            }
-        }
-        return success > node.peers.size() / 2;
+    public Mono<Boolean> appendLogsRequest(Log[] logs) {
+        return Flux.fromIterable(node.peers.entrySet())
+                .filter(entry -> appendLogsRequestOnSingleNode(entry.getValue(), logs))
+                .count()
+                .flatMap(success -> Mono.just(success > node.peers.size() / 2));
     }
 
     private boolean appendLogsRequestOnSingleNode(Peer peer, Log[] logs) {
@@ -131,14 +130,13 @@ public class Client {
         ApplyNotifyReq req = new ApplyNotifyReq();
         req.index = index;
         try {
-            template.postForObject(peer.toUri() + "/apply", req, ApplyNotifyResp.class);
+            template.postForObject(peer.toUri() + "/apply", req, Void.class);
         } catch (RestClientException e) {
             log.error("node " + peer.toUri() + "connection/read error:" + e.getLocalizedMessage());
         }
     }
 
     public void startup() {
-        template = new RestTemplateBuilder().defaultHeader("node", node.id.toString()).setReadTimeout(Duration.ofSeconds(5)).setConnectTimeout(Duration.ofSeconds(5)).build();
         Map<Integer, Peer> unConnectPeers = new HashMap<>(node.peers);
         while (true) {
             List<Integer> connectedId = new ArrayList<>();

@@ -1,0 +1,7 @@
+spring:
+  r2dbc:
+    url:  jdbc:h2:file:~/data/raflog1;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+server:
+  port: 8080

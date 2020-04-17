@@ -21,3 +21,7 @@ node:
       id: 3
       host: "localhost"
       port: 8082
+
+logging:
+  level:
+    com.tiddar.raf.http: info

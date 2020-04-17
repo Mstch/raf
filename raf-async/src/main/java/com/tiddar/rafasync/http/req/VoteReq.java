@@ -1,8 +1,5 @@
-package com.tiddar.raf.http.req;
+package com.tiddar.rafasync.http.req;
 
-import lombok.Data;
-
-@Data
 public class VoteReq {
     public Integer id;
     public Integer lastLogIndex;
